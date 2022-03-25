@@ -1,6 +1,6 @@
 # Quickstart Elastic Stack Install (Bare Metal)
 
-If you would like to setup up a single stack quick and painlessly, I through all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install Debian packages only.  
+If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install Debian packages only.  
 
 The script requires that some `sudo` commands be ran. This is for enabling services to autostart as well as modifying `/etc` files.
 
@@ -53,4 +53,4 @@ Would you like to add a password to your self-signed keys?(y/n): n
     Password: IIOcw329s8jofYR6q5F6
 ```
 
-To change the superuser password or generate enrollement tokens to add additional Elasticsearch nodes, the script outputs the initial config output the file `elasticsearch_install.out` which gives the needed commands.
+To change the superuser password or generate enrollement tokens to add additional Elasticsearch nodes, the script outputs the initial config output to the file `elasticsearch_install.out` which gives the needed commands.
