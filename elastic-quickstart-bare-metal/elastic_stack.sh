@@ -36,7 +36,7 @@ else
     exit
 fi
 
-echo -n "[*] Installing Elasticsearch ${versions[$v]}..."
+echo "[*] Installing Elasticsearch ${versions[$v]}..."
 if sudo dpkg -i $elastic_package | tee elasticsearch_install.out &> /dev/null;then
     echo "[+] Elasticsearch ${versions[$v]} Installed!"
     echo "[!] Important output saved in elasticsearch_install.out"
