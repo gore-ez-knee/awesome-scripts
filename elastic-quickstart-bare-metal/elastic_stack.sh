@@ -29,16 +29,16 @@ fi
 
 echo "[*] Downloading Elasticsearch ${versions[$v]}..."
 if curl -s -L -O $package_prefix"elasticsearch/"$elastic_package &> /dev/null;then
-    echo "[*] Download Successful!"
+    echo "[*] Elasticsearch ${versions[$v]} Download Successful!"
 else
     echo "[-] Unable to Download Elasticsearch"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Installing Elasticsearch..."
+echo -n "[*] Installing Elasticsearch ${versions[$v]}..."
 if sudo dpkg -i $elastic_package | tee elasticsearch_install.out &> /dev/null;then
-    echo "[*] Elasticsearch Installed!"
+    echo "[+] Elasticsearch ${versions[$v]} Installed!"
     echo "[!] Important output saved in elasticsearch_install.out"
 else
     echo "[-] Unable to install Elasticsearch"
@@ -71,14 +71,14 @@ kibana_token=$(sudo /usr/share/elasticsearch/bin/elasticsearch-create-enrollment
 
 echo "[*] Downloading Kibana ${versions[$v]}..."
 if wget $package_prefix"kibana/"$kibana_package &> /dev/null;then
-    echo "[*] Download Successful!"
+    echo "[*] Kibana ${versions[$v]} Download Successful!"
 else
     echo "[-] Unable to Download Kibana"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Installing Kibana..."
+echo "[*] Installing Kibana ${versions[$v]}..."
 if sudo dpkg -i $kibana_package &> /dev/null;then
     echo "[+] Kibana Installed!"
 else
@@ -135,6 +135,7 @@ sudo /bin/systemctl enable kibana.service &> /dev/null
 echo "[*] Starting Kibana..."
 sudo /bin/systemctl start kibana.service
 
+# It takes a few seconds for the Kibana service to properly load
 sleep 15
 
 echo "================================================================"
