@@ -1,6 +1,6 @@
 # Quickstart Elastic Stack Install (Bare Metal)
 
-If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install Debian packages only.  
+If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install **Debian packages only**.  
 
 The script requires that some `sudo` commands be ran. This is for enabling services to autostart as well as modifying `/etc` files.
 
