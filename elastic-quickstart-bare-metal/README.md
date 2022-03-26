@@ -1,12 +1,12 @@
 # Quickstart Elastic Stack Install (Bare Metal)
 
-If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install **Debian packages only**.  
+If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install **Debian packages only and Elastic versions 8.0.0+**.
 
 The script requires that some `sudo` commands be ran. This is for enabling services to autostart as well as modifying `/etc` files.
 
 It also generates self-signed certificates to enable TLS between Kibana and one's browser.
 
-If there is a version you'd like to download that isn't shown or use debian package for a different architecture, you can manually modify the `elastic_package` and `kibana_package` variable at the beginning of the script and choose option `10`.
+If there is a version you'd like to download that isn't shown or use debian package for a different architecture, you can manually modify the `elastic_package` and `kibana_package` variable at the beginning of the script and choose option `4`.
 ```bash
 #!/bin/bash
 
@@ -27,13 +27,7 @@ Select a number corresponding to the version you'd like to download:
 1)  8.1.0
 2)  8.0.1
 3)  8.0.0
-4)  7.17.1
-5)  7.17.0
-6)  7.16.3
-7)  7.16.2
-8)  7.16.1
-9)  7.16.0
-10)  Use default package that is set in the script
+4)  Use default package that is set in the script
 Enter number: 2
 [*] Downloading Elasticsearch 8.0.1...
 [*] Download Successful!

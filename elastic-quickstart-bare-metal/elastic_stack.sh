@@ -8,7 +8,7 @@ kibana_package="kibana-8.1.1-amd64.deb"
 
 package_prefix="https://artifacts.elastic.co/downloads/"
 
-versions=("8.1.1" "8.1.0" "8.0.1" "8.0.0" "7.17.1" "7.17.0" "7.16.3" "7.16.2" "7.16.1" "7.16.0")
+versions=("8.1.1" "8.1.0" "8.0.1" "8.0.0")
 
 num=0
 
@@ -17,7 +17,7 @@ for version in ${versions[@]}; do
     echo "$num)  $version"
     ((num=num+1))
 done
-echo "10)  Use default package that is set in the script"
+echo "4)  Use default package that is set in the script"
 
 read -p "Enter number: " v
 
