@@ -6,6 +6,19 @@ The script requires that some `sudo` commands be ran. This is for enabling servi
 
 It also generates self-signed certificates to enable TLS between Kibana and one's browser.
 
+If there is a version you'd like to download that isn't shown or use debian package for a different architecture, you can manually modify the `elastic_package` and `kibana_package` variable at the beginning of the script and choose option `10`.
+```bash
+#!/bin/bash
+
+# Default packages to install if no version is selected.
+# If another architecture type is needed, you can change these names to what you need.
+# https://elastic.co/downloads/past-releases
+elastic_package="elasticsearch-8.1.1-amd64.deb"
+kibana_package="kibana-8.1.1-amd64.deb"
+...
+```
+
+
 When ran, the output should look similiar to this:
 ```
 elastic-user@elastic:~$ ./elastic_stack.sh
