@@ -1,24 +1,21 @@
 # Quickstart Elastic Stack Install (Bare Metal)
 
+### **10 Apr 2022 - Update**
+> - Modified to pull the latest Elastic 8 versions instead of hard-coding them
+> - Cut down on some of the output by overwriting some lines when a command either succeeds or fails
+> - Cleaned up the downloaded files at the end
+
+### **To-Do**
+- Automatically detect OS and deploy accordingly. Need to get better at installing the 'tar.gz' files of Elasticsearch/Kibana
+- Set this all up with Docker/Docker-Compose
+- Allow for older installs, but will need to configure TLS for those older versions of Elasticsearch/Kibana
+- Find a better way to automatically stand up a fleet-server. Could probably install a stand-alone agent with a conf file and instantiate it as a Fleet Server and link it to Elasticsearch/Kibana. I'll have to play around with it more.
+
 If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install **Debian packages only**. Also this only works for Elastic version 8.0.0+ because Elastic v8 automatically creates TLS certificates for Elasticsearch communication and I haven't put checks in to create and update Elasticsearch should someone want to install an older version. 
 
 The script requires that some `sudo` commands be ran. This is for enabling services to autostart as well as modifying `/etc` files.
 
 It also generates self-signed certificates to enable TLS between Kibana and one's browser as well as for Fleet Server.
-
-If you'd like to choose a different architecture, you can manually modify the `elastic_package`, `kibana_package`, and `agent_package` variables at the beginning of the script and choose option `4`.
-```bash
-#!/bin/bash
-
-# Default packages to install if no version is selected.
-# If another architecture type is needed, you can change these names to what you need.
-# https://elastic.co/downloads/past-releases
-elastic_package="elasticsearch-8.1.1-amd64.deb"
-kibana_package="kibana-8.1.1-amd64.deb"
-agent_package="elastic-agent-8.1.1-amd64.deb"
-...
-```
-
 
 When ran, the output should look similiar to this:
 ```
