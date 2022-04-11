@@ -3,17 +3,25 @@
 # Default packages to install if no version is selected.
 # If another architecture type is needed, you can change these names to what you need.
 # https://elastic.co/downloads/past-releases
-elastic_package="elasticsearch-8.1.1-amd64.deb"
-kibana_package="kibana-8.1.1-amd64.deb"
-agent_package="elastic-agent-8.1.1-amd64.deb"
+
+get_version () {
+    echo -ne "Retrieving available Elastic 8 versions...\r"
+    versions=()
+    version_list=$(curl -s https://www.elastic.co/downloads/past-releases#elasticsearch | grep -ho "8\.[[:digit:]]\.[[:digit:]]" | sort -ru)
+
+    for val in $version_list
+    do
+        versions+=("$val")
+    done
+}
 
 package_prefix="https://artifacts.elastic.co/downloads/"
 
-versions=("8.1.1" "8.1.0" "8.0.1" "8.0.0" "Use Package Set in Script")
+get_version
 
 num=0
 
-echo "Select a number corresponding to the version you'd like to download: "
+echo -e "\033[KSelect a number corresponding to the version you'd like to download: "
 for version in "${versions[@]}"; do
     echo "$num)  $version"
     ((num=num+1))
@@ -21,27 +29,32 @@ done
 
 read -p "Enter number: " v
 
-if [ $((v)) -le 3 ];then
+if [ $((v)) -le $((${#versions[@]}-1)) ];then
     elastic_package="elasticsearch-${versions[$v]}-amd64.deb"
     kibana_package="kibana-${versions[$v]}-amd64.deb"
     agent_package="elastic-agent-${versions[$v]}-amd64.deb"
+else
+    echo "Pick a number that is available"
+    echo "Exiting Script"
+    exit
 fi
 
-echo "[*] Downloading Elasticsearch ${versions[$v]}..."
+
+echo -ne "[*] Downloading Elasticsearch ${versions[$v]}...\r"
 if curl -s -L -O $package_prefix"elasticsearch/"$elastic_package &> /dev/null;then
-    echo "[*] Elasticsearch ${versions[$v]} Download Successful!"
+    echo -e "\033[K[*] Elasticsearch ${versions[$v]} Download Successful!"
 else
-    echo "[-] Unable to Download Elasticsearch"
+    echo -e "\033[K[-] Unable to Download Elasticsearch"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Installing Elasticsearch ${versions[$v]}..."
+echo -ne "[*] Installing Elasticsearch ${versions[$v]}...\r"
 if sudo dpkg -i $elastic_package | tee elasticsearch_install.out &> /dev/null;then
-    echo "[+] Elasticsearch ${versions[$v]} Installed!"
+    echo -e "\033[K[+] Elasticsearch ${versions[$v]} Installed!"
     echo "[!] Important output saved in elasticsearch_install.out"
 else
-    echo "[-] Unable to install Elasticsearch"
+    echo -e "\033[K[-] Unable to install Elasticsearch"
     echo "[-] Exiting Script"
     exit
 fi
@@ -51,14 +64,14 @@ su_password=$(cat elasticsearch_install.out | grep "is : " | rev | cut -d " " -f
 echo "[*] Enabling Elasticsearch to autostart..."
 sudo /bin/systemctl daemon-reload
 sudo /bin/systemctl enable elasticsearch.service &> /dev/null
-echo "[*] Starting Elasticsearch..."
+echo -ne "[*] Starting Elasticsearch...\r"
 sudo /bin/systemctl start elasticsearch.service
 
 # If the last command ran successfully, then Connection to Elasticsearch was successfull
 if curl -s -k -u "elastic:$su_password" https://127.0.0.1:9200 | grep "You Know, for Search" &> /dev/null; then
-    echo "[+] Successful Connection to Elasticsearch! :)"
+    echo -e "\033[K[+] Successful Connection to Elasticsearch! :)"
 else
-    echo "[-] Unable to Connect to Elasticsearch :("
+    echo -e "\033[K[-] Unable to Connect to Elasticsearch :("
     echo "[-] Exiting Script"
     exit
 fi
@@ -66,29 +79,29 @@ fi
 echo "[*] Generating Kibana Enrollment Token..."
 kibana_token=$(sudo /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
 
-echo "[*] Downloading Kibana ${versions[$v]}..."
+echo -ne "[*] Downloading Kibana ${versions[$v]}...\r"
 if wget $package_prefix"kibana/"$kibana_package &> /dev/null;then
-    echo "[*] Kibana ${versions[$v]} Download Successful!"
+    echo -e "\033[K[*] Kibana ${versions[$v]} Download Successful!"
 else
-    echo "[-] Unable to Download Kibana"
+    echo -e "\033[K[-] Unable to Download Kibana"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Installing Kibana ${versions[$v]}..."
+echo -ne "[*] Installing Kibana ${versions[$v]}...\r"
 if sudo dpkg -i $kibana_package &> /dev/null;then
-    echo "[+] Kibana Installed!"
+    echo -e "\033[K[+] Kibana ${versions[$v]} Installed!"
 else
-    echo "[-] Unable to install Kibana"
+    echo -e "\033[K[-] Unable to install Kibana ${versions[$v]}"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Setting Up Kibana with Elasticsearch..."
+echo -ne "[*] Setting Up Kibana with Elasticsearch...\r"
 if sudo /usr/share/kibana/bin/kibana-setup -s -t $kibana_token;then
-    echo "[+] Kibana Successfully Setup with Elasticsearch"
+    echo -e "\033[K[+] Kibana Successfully Setup with Elasticsearch"
 else
-    echo "[-] Something went wrong with the enrollement token..."
+    echo -e "\033[K[-] Something went wrong with the enrollement token..."
     echo "[-] Exiting Script"
     exit
 fi
@@ -109,11 +122,11 @@ fi
 
 sudo mkdir /etc/kibana/certs
 
-echo "[*] Creating self-signed certificates..."
+echo -ne "[*] Creating self-signed certificates...\r"
 if sudo /usr/share/elasticsearch/bin/elasticsearch-certutil cert -s --self-signed --pass "$password" --name kibana-certs --out /etc/kibana/certs/kibana-certs.p12;then
-    echo "[+] Certificates created!"
+    echo -e "\033[K[+] Certificates created!"
 else
-    echo "[-] Unable to create certificates :("
+    echo -e "\033[K[-] Unable to create certificates :("
     echo "[-] Exiting Script"
     exit
 fi
@@ -128,15 +141,21 @@ fi
 
 echo "[*] Generating Encryption Keys for Kibana and writing them to kibana.yml"
 sudo /usr/share/kibana/bin/kibana-encryption-keys generate -f | tail -4 | sudo tee -a /etc/kibana/kibana.yml &>/dev/null
+echo -e "uiSettings:\n  overrides:\n    \"theme:darkMode\": true" | sudo tee -a /etc/kibana/kibana.yml $>/dev/null
 
 echo "[*] Enabling Kibana to autostart..."
 sudo /bin/systemctl daemon-reload
 sudo /bin/systemctl enable kibana.service &> /dev/null
-echo "[*] Starting Kibana..."
+echo -ne "[*] Starting Kibana...\r"
 sudo /bin/systemctl start kibana.service
+
+rm $elastic_package
+rm $kibana_package
 
 # It takes a few seconds for the Kibana service to properly load
 sleep 15
+
+echo -ne "\033[K"
 
 echo "================================================================"
 echo "==              Elasticsearch & Kibana Installed              =="
@@ -152,20 +171,20 @@ if [[ "$q" == "n" || "$q" == "N" ]];then
     exit
 fi
 
-echo "[*] Downloading Elastic Agent ${versions[$v]}..."
+echo -ne "[*] Downloading Elastic Agent ${versions[$v]}...\r"
 if curl -s -L -O $package_prefix"beats/elastic-agent/"$agent_package &> /dev/null;then
-    echo "[*] Elastic Agent ${versions[$v]} Download Successful!"
+    echo -e "\033[K[*] Elastic Agent ${versions[$v]} Download Successful!"
 else
-    echo "[-] Unable to Download Elastic Agent"
+    echo -e "\033[K[-] Unable to Download Elastic Agent"
     echo "[-] Exiting Script"
     exit
 fi
 
-echo "[*] Installing Elastic Agent ${versions[$v]}..."
+echo -ne "[*] Installing Elastic Agent ${versions[$v]}...\r"
 if sudo dpkg -i $agent_package &> /dev/null;then
-    echo "[+] Elastic agent ${versions[$v]} Installed!"
+    echo -e "\033[K[+] Elastic agent ${versions[$v]} Installed!"
 else
-    echo "[-] Unable to install Elastic Agent"
+    echo -e "\033[K[-] Unable to install Elastic Agent"
     echo "[-] Exiting Script"
     exit
 fi
@@ -187,6 +206,8 @@ echo "[*] Creating Certificates for Fleet Server"
 sudo /usr/share/elasticsearch/bin/elasticsearch-certutil cert -s --name fleet-server --ca-cert /etc/elasticsearch/certs/ca/ca.crt --ca-key /etc/elasticsearch/certs/ca/ca.key --out /etc/elastic-agent/certs/fleet-server.zip --pem
 sudo unzip /etc/elastic-agent/certs/fleet-server.zip -d /etc/elastic-agent/certs/ &>/dev/null
 sudo rm /etc/elastic-agent/certs/fleet-server.zip
+
+rm $agent_package
 
 echo "================================================================"
 echo "==                     Fleet-Server Setup                     =="
