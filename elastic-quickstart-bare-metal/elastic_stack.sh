@@ -4,6 +4,21 @@
 # If another architecture type is needed, you can change these names to what you need.
 # https://elastic.co/downloads/past-releases
 
+green=`tput setaf 2`
+reset=`tput sgr0`
+
+load_animation () {
+while kill -0 $! >/dev/null 2>&1
+do
+  for i in {1..3};do
+    echo -n "."
+    sleep 1
+  done
+  echo -ne "\033[3D\033[0K"
+done
+echo ${green}" DONE"${reset}
+}
+
 get_version () {
     echo -ne "Retrieving available Elastic 8 versions...\r"
     versions=()
@@ -15,9 +30,19 @@ get_version () {
     done
 }
 
+get_ip () {
+    ips=()
+    ip_list=$(ip addr | grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | grep -Ev "(127.0.0.1|255$|\.1$|^169)")
+    for i in $ip_list
+    do
+        ips+=("$i")
+    done
+}
+
 package_prefix="https://artifacts.elastic.co/downloads/"
 
 get_version
+get_ip
 
 num=0
 
@@ -39,6 +64,24 @@ else
     exit
 fi
 
+num=0
+server_ip=""
+
+echo "Select a number corresponding the Server's IP: "
+for ip in "${ips[@]}"; do
+    echo "$num)  $ip"
+    ((num=num+1))
+done
+
+read -p "Enter number: " p
+
+if [ $((v)) -le $((${#versions[@]}-1)) ];then
+    server_ip="${ips[$p]}"
+else
+    echo "Pick a number that is available"
+    echo "Exiting Script"
+    exit
+fi
 
 echo -ne "[*] Downloading Elasticsearch ${versions[$v]}...\r"
 if curl -s -L -O $package_prefix"elasticsearch/"$elastic_package &> /dev/null;then
@@ -141,7 +184,7 @@ fi
 
 echo "[*] Generating Encryption Keys for Kibana and writing them to kibana.yml"
 sudo /usr/share/kibana/bin/kibana-encryption-keys generate -f | tail -4 | sudo tee -a /etc/kibana/kibana.yml &>/dev/null
-echo -e "uiSettings:\n  overrides:\n    \"theme:darkMode\": true" | sudo tee -a /etc/kibana/kibana.yml $>/dev/null
+echo -e "uiSettings:\n  overrides:\n    \"theme:darkMode\": true" | sudo tee -a /etc/kibana/kibana.yml &>/dev/null
 
 echo "[*] Enabling Kibana to autostart..."
 sudo /bin/systemctl daemon-reload
@@ -196,7 +239,13 @@ sudo /usr/share/elasticsearch/bin/elasticsearch-certutil ca -s --pem --out /etc/
 if ! which unzip &>/dev/null
 then
     echo "[!] Need to install Unzip binary"
-    sudo apt install unzip &>/dev/null
+    sudo apt install unzip -y &>/dev/null
+fi
+
+if ! which jq &>/dev/null
+then
+    echo "[!] Need to install jq binary"
+    sudo apt install jq -y &>/dev/null
 fi
 
 sudo unzip -q /etc/elasticsearch/certs/ca.zip -d /etc/elasticsearch/certs/
@@ -209,26 +258,48 @@ sudo rm /etc/elastic-agent/certs/fleet-server.zip
 
 rm $agent_package
 
+curl -k -u "elastic:$su_password" https://localhost:5601/api/fleet/agents/setup -XGET \
+--header 'kbn-xsrf: true' &>/dev/null
+
+echo -n "[*] Setting Up Fleet Agent Policy"
+curl -k -u "elastic:$su_password" https://localhost:5601/api/fleet/agent_policies?sys_monitoring=true -XPOST \
+--header 'content-type: application/json' \
+--header 'kbn-xsrf: true' \
+--data '{"id":"fleet-server-policy","name":"Fleet Server policy","description":"","namespace":"default","monitoring_enabled":["logs","metrics"],"has_fleet_server":true}' &>/dev/null &
+load_animation
+
+echo "[*] Snagging Service Token"
+token=`curl -k -u "elastic:$su_password" -s -X POST https://localhost:5601/api/fleet/service_tokens --header 'kbn-xsrf: true' | jq -r .value`
+
+echo "[*] Getting Elastcsearch CA Fingerprint"
+fingerprint=`sudo openssl x509 -fingerprint -sha256 -noout -in /etc/elasticsearch/certs/http_ca.crt | awk -F"=" {' print $2 '} | sed s/://g | tr '[:upper:]' '[:lower:]'`
+
+echo -n "[*] Adding Fleet Server host"
+curl -k -XPUT -u "elastic:$su_password" https://localhost:5601/api/fleet/settings \
+--header 'kbn-xsrf: true' \
+--header 'content-type: application/json' \
+-d '{"fleet_server_hosts":["https://192.168.235.133:8220"]}' &
+load_animation
+
+curl -k -u "elastic:$su_password" https://localhost:5601/api/fleet/agents/setup -XGET \
+--header 'kbn-xsrf: true' &>/dev/null
+
+echo -n "[*] Enrolling Fleet"
+sudo elastic-agent enroll -f \
+--url=https://$server_ip:8220 \
+--fleet-server-es=https://$server_ip:9200 \
+--fleet-server-service-token=$token \
+--fleet-server-policy=fleet-server-policy \
+--fleet-server-es-ca-trusted-fingerprint=$fingerprint \
+--certificate-authorities=/etc/elasticsearch/certs/ca/ca.crt \
+--fleet-server-cert=/etc/elastic-agent/certs/fleet-server/fleet-server.crt \
+--fleet-server-cert-key=/etc/elastic-agent/certs/fleet-server/fleet-server.key &>/dev/null &
+load_animation
+
+sudo /bin/systemctl daemon-reload
+sudo /bin/systemctl enable elastic-agent &> /dev/null
+sudo /bin/systemctl start elastic-agent
+
 echo "================================================================"
-echo "==                     Fleet-Server Setup                     =="
+echo "==                   Fleet Server Installed                   =="
 echo "================================================================"
-echo "[*] Go to Kibana -> Click on Fleet"
-echo "[!] Step 1: Click on Create Policy"
-echo "[*] Step 2: Ignore. Elastic Agent is already Downloaded"
-echo "[*] Step 3: Choose \"Quick start\" for Deployment Mode "
-echo "[*] Step 4: Type in https://SERVER_IP:8220 and click \"Add host\""
-echo "[*] Step 5: Click Generate Token"
-echo "[*] Use the following template to enroll the Fleet Server"
-echo "[*] Replace the 3 variables (SERVER_IP, FLEET_SERVER_TOKEN, & ELASTICSEARCH_CA_FINGERPRINT) with the information that Step 6 provides:"
-echo "sudo elastic-agent enroll -f \\"
-echo "--url=https://SERVER_IP:8220 \\"
-echo "--fleet-server-es=https://SERVER_IP:9200 \\"
-echo "--fleet-server-service-token=FLEET_SERVER_TOKEN \\"
-echo "--fleet-server-policy=fleet-server-policy \\"
-echo "--fleet-server-es-ca-trusted-fingerprint=ELASTICSEARCH_CA_FINGERPRINT \\"
-echo "--certificate-authorities=/etc/elasticsearch/certs/ca/ca.crt \\"
-echo "--fleet-server-cert=/etc/elastic-agent/certs/fleet-server/fleet-server.crt \\"
-echo "--fleet-server-cert-key=/etc/elastic-agent/certs/fleet-server/fleet-server.key"
-echo "[*] Once you have entered the command and the Agent shuts down, start the agent:"
-echo "sudo service elastic-agent start"
-echo "[+] Check Fleet. You should see Fleet Server up and healthy!"
