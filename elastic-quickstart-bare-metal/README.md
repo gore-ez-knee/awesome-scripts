@@ -1,5 +1,8 @@
 # Quickstart Elastic Stack Install (Bare Metal)
 
+### **18 Apr 2022 - Update**
+> - Modified the script to automatically setup Fleet Server. I eventually realized I could use a proxy (Burp Suite) to capture the API calls used when manually setting up Fleet through the UI. Then I could create `curl` commands to have the script setup what is needed for Fleet.
+
 ### **10 Apr 2022 - Update**
 > - Modified to pull the latest Elastic 8 versions instead of hard-coding them
 > - Cut down on some of the output by overwriting some lines when a command either succeeds or fails
@@ -7,9 +10,8 @@
 
 ### **To-Do**
 - Automatically detect OS and deploy accordingly. Need to get better at installing the 'tar.gz' files of Elasticsearch/Kibana
-- Set this all up with Docker/Docker-Compose
+- Set this all up with Docker/Docker-Compose (Getting close)
 - Allow for older installs, but will need to configure TLS for those older versions of Elasticsearch/Kibana
-- Find a better way to automatically stand up a fleet-server. Could probably install a stand-alone agent with a conf file and instantiate it as a Fleet Server and link it to Elasticsearch/Kibana. I'll have to play around with it more.
 
 If you would like to setup up a single stack quick and painlessly, I threw all of the commands into a script. Being that I installed this on a Debian/Ubuntu server, the script has been setup to install **Debian packages only**. Also this only works for Elastic version 8.0.0+ because Elastic v8 automatically creates TLS certificates for Elasticsearch communication and I haven't put checks in to create and update Elasticsearch should someone want to install an older version. 
 
@@ -17,17 +19,22 @@ The script requires that some `sudo` commands be ran. This is for enabling servi
 
 It also generates self-signed certificates to enable TLS between Kibana and one's browser as well as for Fleet Server.
 
-When ran, the output should look similiar to this:
+Still working on getting this setup with Docker the same way...
+
+When ran, the output should look similar to this:
 ```
 elastic-user@elastic:~$ sudo ./elastic_stack.sh
 [sudo] password for elastic-user:
 Select a number corresponding to the version you'd like to download:
-0)  8.1.1
-1)  8.1.0
-2)  8.0.1
-3)  8.0.0
-4)  Use Package Set in Script
+0)  8.1.2
+1)  8.1.1
+2)  8.1.0
+3)  8.0.1
+4)  8.0.0
 Enter number: 0
+Select a number corresponding the Server's IP: 
+0)  192.168.235.133
+Enter a number: 0
 [*] Downloading Elasticsearch 8.1.1...
 [*] Elasticsearch 8.1.1 Download Successful!
 [*] Installing Elasticsearch 8.1.1...
@@ -68,29 +75,14 @@ Password (again):
 [*] Generating a CA to create Fleet Server Certificates
 [!] Need to install Unzip binary
 [*] Creating Certificates for Fleet Server
+[*] Setting Up Fleet Agent Policy...DONE
+[*] Snagging Service Token...DONE
+[*] Getting Elasticsearch CA Fingerprint...DONE
+[*] Adding Fleet Server host...DONE
+[*] Enrolling Fleet...DONE
 ================================================================
-==                     Fleet-Server Setup                     ==
+==                   Fleet Server Installed                   ==
 ================================================================
-[*] Go to Kibana -> Click on Fleet
-[!] Step 1: Click on Create Policy
-[*] Step 2: Ignore. Elastic Agent is already Downloaded
-[*] Step 3: Choose "Quick start" for Deployment Mode
-[*] Step 4: Type in https://SERVER_IP:8220 and click "Add host"
-[*] Step 5: Click Generate Token
-[*] Use the following template to enroll the Fleet Server
-[*] Replace the 3 variables (SERVER_IP, FLEET_SERVER_TOKEN, & ELASTICSEARCH_CA_FINGERPRINT) with the information that Step 6 provides:
-sudo elastic-agent enroll -f \
---url=https://SERVER_IP:8220 \
---fleet-server-es=https://SERVER_IP:9200 \
---fleet-server-service-token=FLEET_SERVER_TOKEN \
---fleet-server-policy=fleet-server-policy \
---fleet-server-es-ca-trusted-fingerprint=ELASTICSEARCH_CA_FINGERPRINT \
---certificate-authorities=/etc/elasticsearch/certs/ca/ca.crt \
---fleet-server-cert=/etc/elastic-agent/certs/fleet-server/fleet-server.crt \
---fleet-server-cert-key=/etc/elastic-agent/certs/fleet-server/fleet-server.key
-[*] Once you have entered the command and the Agent shutsdown, start the agent:
-sudo service elastic-agent start
-[+] Check Fleet. You should see Fleet Server up and healthy!
 ```
 
-To change the superuser password or generate enrollement tokens to add additional Elasticsearch nodes, the script outputs the initial config output to the file `elasticsearch_install.out` which gives the needed commands.
+To change the superuser password or generate enrollment tokens to add additional Elasticsearch nodes, the script outputs the initial config output to the file `elasticsearch_install.out` which gives the needed commands.
